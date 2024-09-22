@@ -38,7 +38,7 @@ func main() {
 		routing.WarRecognitionsPrefix,
 		fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix),
 		pubsub.SimpleQueueDurable,
-		handlerWar(gameState)); err != nil {
+		handlerWar(gameState, publishCh)); err != nil {
 		log.Fatalf("could not subscribe to war recognition messages: %s", err)
 	}
 
