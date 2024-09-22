@@ -38,6 +38,9 @@ func main() {
 		pubsub.SimpleQueueDurable,
 		handlerLogs(),
 	)
+	if err != nil {
+		log.Fatalf("could not subscribe to game logs: %s", err)
+	}
 
 	gamelogic.PrintServerHelp()
 
