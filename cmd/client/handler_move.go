@@ -30,9 +30,10 @@ func handlerMove(gs *gamelogic.GameState, ch *amqp.Channel) func(move gamelogic.
 			)
 			if err != nil {
 				fmt.Printf("error publishing war recognition: %v\n", err)
+				return pubsub.NackRequeue
 			}
 
-			return pubsub.NackRequeue
+			return pubsub.Ack
 		}
 
 		fmt.Println("unknown move outcome. discarding..", mo)
