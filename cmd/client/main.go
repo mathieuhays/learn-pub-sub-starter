@@ -35,10 +35,20 @@ func main() {
 	if err = pubsub.SubscribeJSON(
 		connection,
 		routing.ExchangePerilTopic,
+		routing.WarRecognitionsPrefix,
+		fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix),
+		pubsub.SimpleQueueDurable,
+		handlerWar(gameState)); err != nil {
+		log.Fatalf("could not subscribe to war recognition messages: %s", err)
+	}
+
+	if err = pubsub.SubscribeJSON(
+		connection,
+		routing.ExchangePerilTopic,
 		fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, username),
 		fmt.Sprintf("%s.*", routing.ArmyMovesPrefix),
 		pubsub.SimpleQueueTransient,
-		handlerMove(gameState)); err != nil {
+		handlerMove(gameState, publishCh)); err != nil {
 		log.Fatalf("could not subscribe to army moves: %s", err)
 	}
 
