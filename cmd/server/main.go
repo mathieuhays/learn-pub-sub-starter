@@ -19,25 +19,28 @@ func main() {
 
 	connection, err := amqp.Dial(rabbitMQURL)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("could not connect to RabbitMQ: %s", err)
 	}
 	defer connection.Close()
 
 	log.Println("Rabbit MQ connection successful")
 
-	mqChan, err := connection.Channel()
+	publishCh, err := connection.Channel()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("could not create channel: %s", err)
 	}
 
-	if err = pubsub.PublishJSON(
-		mqChan,
-		routing.ExchangePerilDirect,
-		routing.PauseKey,
-		routing.PlayingState{IsPaused: true},
-	); err != nil {
-		log.Fatal(err)
+	_, queue, err := pubsub.DeclareAndBind(
+		connection,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug,
+		fmt.Sprintf("%s.*", routing.GameLogSlug),
+		pubsub.SimpleQueueDurable,
+	)
+	if err != nil {
+		log.Fatalf("could not subscribe to game logs: %s", err)
 	}
+	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
 
 	gamelogic.PrintServerHelp()
 
@@ -47,44 +50,32 @@ func main() {
 			continue
 		}
 
-		if words[0] == "pause" {
-			fmt.Println("sending pause message...")
+		switch words[0] {
+		case "pause":
+			fmt.Println("Publishing paused game state")
 			if err = pubsub.PublishJSON(
-				mqChan,
+				publishCh,
 				routing.ExchangePerilDirect,
 				routing.PauseKey,
 				routing.PlayingState{IsPaused: true},
 			); err != nil {
-				log.Fatal(err)
+				log.Printf("could not publish pause state: %v\n", err)
 			}
-			continue
-		}
-
-		if words[0] == "resume" {
-			fmt.Println("sending resume message...")
+		case "resume":
+			fmt.Println("Publishing resume game state")
 			if err = pubsub.PublishJSON(
-				mqChan,
+				publishCh,
 				routing.ExchangePerilDirect,
 				routing.PauseKey,
 				routing.PlayingState{IsPaused: false},
 			); err != nil {
-				log.Fatal(err)
+				log.Printf("could not publish resume game state: %s\n", err)
 			}
-			continue
-		}
-
-		if words[0] == "quit" {
+		case "quit":
 			fmt.Println("Stopping...")
-			break
+			return
+		default:
+			fmt.Println("unknown command")
 		}
-
-		fmt.Println("I don't understand. Either use 'pause', 'resume' or 'quit'")
 	}
-
-	//// Wait for interrupt signal
-	//signalChan := make(chan os.Signal, 1)
-	//signal.Notify(signalChan, os.Interrupt)
-	//<-signalChan
-
-	log.Println("Shutting Down")
 }
